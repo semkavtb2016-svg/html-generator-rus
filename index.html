@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конструктор ротатора рекламных карточек</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 650px; background: #1e293b; padding: 24px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); border: 1px solid #334155; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .full-width { grid-column: span 2; }
+        label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; outline: none; }
+        input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-allowed; background: #1e293b; }
+        input:focus, select:focus, textarea:focus { border-color: #38bdf8; }
+        .toggle-group { display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; }
+        .toggle-group label { margin-bottom: 0; cursor: pointer; color: #f8fafc; text-transform: none; font-size: 13px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .2s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }
+        input:checked + .slider { background-color: #0284c7; }
+        input:checked + .slider:before { transform: translateX(18px); }
+        .action-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #0284c7; color: white; font-weight: 600; cursor: pointer; margin-bottom: 20px; transition: background 0.2s; }
+        .action-btn:hover { background: #0369a1; }
+        .preview-area { margin-bottom: 20px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0369a1 100%); padding: 24px; border-radius: 12px; border: 1px dashed #334155; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+        .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
+        .code-area { position: relative; }
+        textarea.code-out { height: 180px; background: #0f172a; border: 1px solid #334155; color: #a7f3d0; font-family: monospace; font-size: 12px; resize: none; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; padding: 6px 10px; font-size: 12px; background: #334155; border: none; color: #fff; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="form-grid">
+        <div class="full-width">
+            <label>Тип контента</label>
+            <select id="contentType" onchange="toggleTypeFields()">
+                <option value="site">Сайты (по ссылке)</option>
+                <option value="file">Файл для скачивания</option>
+            </select>
+        </div>
+
+        <div id="sitesBox" class="full-width">
+            <label>Ссылки на сайты (до 100 шт, с новой строки)</label>
+            <textarea id="urlsInput" rows="3" oninput="checkSitesCount()">https://wikipedia.org
+https://github.com</textarea>
+        </div>
+
+        <div id="fileBox" class="full-width form-grid" style="display: none; margin-bottom: 0;">
+            <div class="full-width">
+                <label>Ссылка на файл ИЛИ загрузить файл</label>
+                <input type="url" id="fileUrlInput" placeholder="https://example.com/file.zip" style="margin-bottom: 8px;" oninput="handleUrlFileChange()">
+                <input type="file" id="fileFileInput" onchange="handleFileUpload(this)">
+            </div>
+            <div>
+                <label>Имя файла</label>
+                <input type="text" id="fileNameInput" value="file" disabled>
+            </div>
+            <div>
+                <label>Описание</label>
+                <input type="text" id="fileDescInput" value="Файл готов к скачиванию" disabled>
+            </div>
+        </div>
+
+        <div class="toggle-group full-width" id="customEditGroup">
+            <label for="customEditToggle">Режим ручного редактирования</label>
+            <label class="switch">
+                <input type="checkbox" id="customEditToggle" onchange="toggleCustomEdit()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div id="customEditBox" class="full-width form-grid" style="display: none; margin-bottom: 0;">
+            <div class="full-width">
+                <label>Своя иконка (Ссылка или Файл)</label>
+                <input type="url" id="customIconUrl" placeholder="https://site.com/icon.png" style="margin-bottom: 8px;">
+                <input type="file" accept="image/*" onchange="handleIconUpload(this)">
+            </div>
+            <div>
+                <label>Заголовок</label>
+                <input type="text" id="customTitle" value="Кастомный заголовок">
+            </div>
+            <div>
+                <label>Описание</label>
+                <input type="text" id="customDesc" value="Кастомное описание карточки">
+            </div>
+        </div>
+
+        <div>
+            <label>Стиль оформления</label>
+            <select id="cardStyle">
+                <option value="adaptive">Адаптивный (непрозрачный)</option>
+                <option value="transparent">Прозрачный</option>
+                <option value="adaptive_blur">Адаптивный размытый</option>
+                <option value="transparent_blur" selected>Прозрачный с размытием</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Форма иконки</label>
+            <select id="iconShape">
+                <option value="squircle">Скругленный квадрат</option>
+                <option value="circle">Круг</option>
+                <option value="square">Квадрат</option>
+                <option value="hexagon">Шестиугольник</option>
+                <option value="none">Без формы</option>
+            </select>
+        </div>
+
+        <div class="toggle-group" id="arrowsToggleGroup">
+            <label for="arrowsToggle">Стрелки навигации</label>
+            <label class="switch">
+                <input type="checkbox" id="arrowsToggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-group">
+            <label for="noConfirm">Без подтверждения</label>
+            <label class="switch">
+                <input type="checkbox" id="noConfirm">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-group full-width">
+            <label for="adToggle">Маркировка «Реклама»</label>
+            <label class="switch">
+                <input type="checkbox" id="adToggle" checked onchange="toggleAdOptions()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div id="adOptions" class="full-width form-grid" style="margin-bottom: 0;">
+            <div>
+                <label>Стиль плашки рекламы</label>
+                <select id="adStyle">
+                    <option value="badge">Бейдж</option>
+                    <option value="minimal">Минималистичный</option>
+                    <option value="neon">Неоновый контур</option>
+                </select>
+            </div>
+            <div>
+                <label>Текст рекламодателя</label>
+                <input type="text" id="adText" placeholder="ООО 'Реклама', ЕРИД...">
+            </div>
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="generate()">Сгенерировать HTML</button>
+
+    <div class="preview-area">
+        <div id="previewContainer" style="width: 100%; display: flex; justify-content: center;"></div>
+    </div>
+
+    <div class="code-area">
+        <div class="section-title">Готовый HTML-код:</div>
+        <textarea id="codeOutput" class="code-out" readonly></textarea>
+        <button class="copy-btn" onclick="copyCode()">Копировать</button>
+    </div>
+</div>
+
+<script>
+    let uploadedFileBase64 = '';
+    let uploadedFileName = '';
+    let uploadedIconBase64 = '';
+
+    function toggleTypeFields() {
+        const type = document.getElementById('contentType').value;
+        const isFile = type === 'file';
+        
+        document.getElementById('sitesBox').style.display = isFile ? 'none' : 'block';
+        document.getElementById('fileBox').style.display = isFile ? 'grid' : 'none';
+        
+        const customEditGroup = document.getElementById('customEditGroup');
+        if (isFile) {
+            customEditGroup.style.display = 'none';
+            document.getElementById('customEditToggle').checked = false;
+            toggleCustomEdit();
+        } else {
+            customEditGroup.style.display = 'flex';
+        }
+        
+        checkSitesCount();
+    }
+
+    function toggleCustomEdit() {
+        const isCustom = document.getElementById('customEditToggle').checked;
+        document.getElementById('customEditBox').style.display = isCustom ? 'grid' : 'none';
+    }
+
+    function toggleAdOptions() {
+        const isAd = document.getElementById('adToggle').checked;
+        document.getElementById('adOptions').style.display = isAd ? 'grid' : 'none';
+    }
+
+    function checkSitesCount() {
+        const type = document.getElementById('contentType').value;
+        const urls = document.getElementById('urlsInput').value.split('\n').filter(u => u.trim().length > 0);
+        const arrowsGroup = document.getElementById('arrowsToggleGroup');
+        
+        if (type === 'site' && urls.length > 1) {
+            arrowsGroup.style.opacity = '1';
+            arrowsGroup.style.pointerEvents = 'auto';
+        } else {
+            arrowsGroup.style.opacity = '0.5';
+            arrowsGroup.style.pointerEvents = 'none';
+            document.getElementById('arrowsToggle').checked = false;
+        }
+    }
+
+    function handleFileUpload(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            uploadedFileName = file.name;
+            document.getElementById('fileNameInput').value = file.name;
+            document.getElementById('fileUrlInput').value = '';
+            
+            const reader = new FileReader();
+            reader.onload = (e) => uploadedFileBase64 = e.target.result;
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleUrlFileChange() {
+        const val = document.getElementById('fileUrlInput').value.trim();
+        if (val) {
+            uploadedFileBase64 = '';
+            document.getElementById('fileFileInput').value = '';
+            try {
+                const url = new URL(val);
+                const pathParts = url.pathname.split('/');
+                const nameFromUrl = pathParts[pathParts.length - 1];
+                document.getElementById('fileNameInput').value = nameFromUrl || 'file';
+            } catch(e) {
+                document.getElementById('fileNameInput').value = 'file';
+            }
+        }
+    }
+
+    function handleIconUpload(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => uploadedIconBase64 = e.target.result;
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function getStyleCSS(styleType) {
+        switch(styleType) {
+            case 'adaptive': return 'background: #1e293b; border: 1px solid #334155; color: #f8fafc;';
+            case 'transparent': return 'background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); color: inherit;';
+            case 'adaptive_blur': return 'background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid #334155; color: #f8fafc;';
+            case 'transparent_blur': default: return 'background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); color: inherit;';
+        }
+    }
+
+    function getIconShapeCSS(shape) {
+        switch(shape) {
+            case 'circle': return 'border-radius: 50%;';
+            case 'square': return 'border-radius: 0px;';
+            case 'hexagon': return 'clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);';
+            case 'none': return 'border-radius: 0; background: transparent;';
+            case 'squircle': default: return 'border-radius: 10px;';
+        }
+    }
+
+    async function generate() {
+        const contentType = document.getElementById('contentType').value;
+        const isCustomEdit = document.getElementById('customEditToggle').checked;
+        const cardStyle = document.getElementById('cardStyle').value;
+        const iconShape = document.getElementById('iconShape').value;
+        const showArrows = document.getElementById('arrowsToggle').checked;
+        const noConfirm = document.getElementById('noConfirm').checked;
+        const isAd = document.getElementById('adToggle').checked;
+        const adStyle = document.getElementById('adStyle').value;
+        const adText = document.getElementById('adText').value.trim();
+
+        const baseStyle = getStyleCSS(cardStyle);
+        const iconShapeStyle = getIconShapeCSS(iconShape);
+
+        let adBadgeHTML = '';
+        if (isAd) {
+            if (adStyle === 'badge') adBadgeHTML = `<span style="font-size: 10px; font-weight: 700; background: #0284c7; color: #ffffff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-right: 6px;">Реклама</span>`;
+            else if (adStyle === 'minimal') adBadgeHTML = `<span style="font-size: 11px; opacity: 0.6; font-weight: 500; margin-right: 6px;">• Реклама</span>`;
+            else if (adStyle === 'neon') adBadgeHTML = `<span style="font-size: 10px; font-weight: 600; color: #38bdf8; border: 1px solid #38bdf8; padding: 1px 5px; border-radius: 4px; margin-right: 6px;">Реклама</span>`;
+        }
+
+        let adFooterHTML = isAd && adText ? `<div style="font-size: 11px; opacity: 0.5; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">${escapeHtml(adText)}</div>` : '';
+
+        const sitesData = [];
+
+        if (contentType === 'site') {
+            const rawUrls = document.getElementById('urlsInput').value.split('\n').map(u => u.trim()).filter(u => u.length > 0).slice(0, 100);
+            for (let rawUrl of rawUrls) {
+                if (!/^https?:\/\//i.test(rawUrl)) rawUrl = 'https://' + rawUrl;
+                try {
+                    const targetUrl = new URL(rawUrl);
+                    let title = targetUrl.hostname;
+                    let description = 'Описание недоступно';
+                    let iconUrl = uploadedIconBase64 || document.getElementById('customIconUrl').value || `https://www.google.com/s2/favicons?domain=${targetUrl.hostname}&sz=128`;
+
+                    if (!isCustomEdit) {
+                        try {
+                            const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(targetUrl.href)}`);
+                            const data = await res.json();
+                            if (data.status === 'success' && data.data) {
+                                if (data.data.title) title = data.data.title;
+                                if (data.data.description) description = data.data.description;
+                                if (data.data.logo && data.data.logo.url) iconUrl = data.data.logo.url;
+                            }
+                        } catch(e) {}
+                    } else {
+                        title = document.getElementById('customTitle').value || title;
+                        description = document.getElementById('customDesc').value || description;
+                    }
+
+                    sitesData.push({ url: targetUrl.href, domain: targetUrl.hostname, title, description, icon: iconUrl, isFile: false });
+                } catch(e) {}
+            }
+        } else {
+            const fileTarget = uploadedFileBase64 || document.getElementById('fileUrlInput').value || '#';
+            const fileName = document.getElementById('fileNameInput').value || 'file';
+            const fileDesc = document.getElementById('fileDescInput').value || 'Скачать файл';
+            const fileIcon = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="%2338bdf8" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>';
+
+            sitesData.push({ url: fileTarget, domain: 'Файл', title: fileName, description: fileDesc, icon: fileIcon, isFile: true });
+        }
+
+        const widgetId = 'card_' + Math.random().toString(36).substr(2, 9);
+        const hasArrows = showArrows && sitesData.length > 1;
+
+        const widgetHTML = 
+`<div id="${widgetId}" style="all: unset; display: flex; flex-direction: column; padding: 14px; border-radius: 12px; ${baseStyle} font-family: system-ui, -apple-system, sans-serif; max-width: 480px; width: 100%; box-sizing: border-box; position: relative;">
+    <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+        ${hasArrows ? `<button onclick="prev_${widgetId}()" style="all: unset; cursor: pointer; padding: 4px; opacity: 0.7; font-weight: bold; color: inherit;">❮</button>` : ''}
+        <div id="${widgetId}_content" style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; transition: opacity 0.3s ease;">
+            <img id="${widgetId}_img" src="" alt="icon" style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; background: rgba(0,0,0,0.2); ${iconShapeStyle}">
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 14px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.95;">
+                    ${adBadgeHTML}<span id="${widgetId}_title"></span>
+                </div>
+                <div id="${widgetId}_desc" style="font-size: 12px; opacity: 0.7; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"></div>
+            </div>
+            <button id="${widgetId}_btn" style="all: unset; padding: 8px 14px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; backdrop-filter: blur(4px); transition: all 0.2s; box-sizing: border-box;" onmouseover="this.style.background='rgba(56, 189, 248, 0.35)'" onmouseout="this.style.background='rgba(56, 189, 248, 0.2)'">Открыть</button>
+        </div>
+        ${hasArrows ? `<button onclick="next_${widgetId}()" style="all: unset; cursor: pointer; padding: 4px; opacity: 0.7; font-weight: bold; color: inherit;">❯</button>` : ''}
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; opacity: 0.6;">
+        <span id="${widgetId}_tag" style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-weight: 600; color: #38bdf8;"></span>
+        ${adFooterHTML}
+    </div>
+
+    ${!noConfirm ? `
+    <div id="${widgetId}_modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 999999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; color: #f8fafc; margin: 0;">
+        <div style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.15); padding: 24px; border-radius: 16px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5); font-family: system-ui, sans-serif; box-sizing: border-box;">
+            <div id="${widgetId}_modal_title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #f8fafc;">Перейти на сайт?</div>
+            <div id="${widgetId}_modal_url" style="font-size: 12px; color: #38bdf8; word-break: break-all; margin-bottom: 20px; line-height: 1.3;"></div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="document.getElementById('${widgetId}_modal').style.display='none'" style="all: unset; flex: 1; padding: 10px; background: rgba(239, 68, 68, 0.75); color: #ffffff; border: 1px solid rgba(239, 68, 68, 0.9); border-radius: 8px; font-weight: 600; cursor: pointer; backdrop-filter: blur(4px); box-sizing: border-box;">Нет</button>
+                <a id="${widgetId}_modal_link" href="" target="_blank" rel="noopener noreferrer" onclick="document.getElementById('${widgetId}_modal').style.display='none'" style="all: unset; flex: 1; padding: 10px; background: rgba(34, 197, 94, 0.25); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block; box-sizing: border-box;">Да</a>
+            </div>
+        </div>
+    </div>` : ''}
+
+    <script>
+        (function() {
+            const items = ${JSON.stringify(sitesData)};
+            let cur = 0;
+            const noConf = ${noConfirm};
+
+            function updateCard(i) {
+                const item = items[i];
+                const content = document.getElementById('${widgetId}_content');
+                content.style.opacity = 0;
+                setTimeout(() => {
+                    document.getElementById('${widgetId}_img').src = item.icon;
+                    document.getElementById('${widgetId}_title').innerText = item.title;
+                    document.getElementById('${widgetId}_desc').innerText = item.description;
+                    document.getElementById('${widgetId}_tag').innerText = item.isFile ? '📁 Файл' : '🏷️ ' + item.domain;
+                    
+                    const btn = document.getElementById('${widgetId}_btn');
+                    btn.innerText = item.isFile ? 'Скачать' : 'Открыть';
+
+                    const action = () => {
+                        if (item.isFile) {
+                            const a = document.createElement('a');
+                            a.href = item.url;
+                            a.download = item.title;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        } else {
+                            window.open(item.url, '_blank');
+                        }
+                    };
+
+                    if (noConf) {
+                        btn.onclick = action;
+                    } else {
+                        btn.onclick = () => {
+                            const mTitle = document.getElementById('${widgetId}_modal_title');
+                            mTitle.innerText = item.isFile ? 'Вы ТОЧНО хотите установить этот ФАЙЛ???' : 'Перейти на сайт?';
+                            document.getElementById('${widgetId}_modal_url').innerText = item.isFile ? item.title : item.url;
+                            const mLink = document.getElementById('${widgetId}_modal_link');
+                            mLink.onclick = (e) => {
+                                e.preventDefault();
+                                document.getElementById('${widgetId}_modal').style.display = 'none';
+                                action();
+                            };
+                            document.getElementById('${widgetId}_modal').style.display = 'flex';
+                        };
+                    }
+                    content.style.opacity = 1;
+                }, 300);
+            }
+
+            window.prev_${widgetId} = () => { cur = (cur - 1 + items.length) % items.length; updateCard(cur); };
+            window.next_${widgetId} = () => { cur = (cur + 1) % items.length; updateCard(cur); };
+
+            updateCard(0);
+            if (items.length > 1) {
+                setInterval(() => { window.next_${widgetId}(); }, 25000);
+            }
+        })();
+    <\/script>
+</div>`;
+
+        renderOutput(widgetHTML);
+    }
+
+    function renderOutput(html) {
+        document.getElementById('previewContainer').innerHTML = html;
+        document.getElementById('codeOutput').value = html;
+        const scripts = document.getElementById('previewContainer').getElementsByTagName('script');
+        for (let script of scripts) { eval(script.innerHTML); }
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function copyCode() {
+        const textarea = document.getElementById('codeOutput');
+        if (!textarea.value) return;
+        textarea.select();
+        navigator.clipboard.writeText(textarea.value);
+        const btn = document.querySelector('.copy-btn');
+        btn.innerText = 'Скопировано!';
+        setTimeout(() => btn.innerText = 'Копировать', 2000);
+    }
+
+    checkSitesCount();
+    generate();
+</script>
+
+</body>
+</html>
